@@ -1,10 +1,15 @@
-import { RouterContext, helpers, Status, Router } from "https://deno.land/x/oak/mod.ts";
+import { RouterContext, helpers, Status, Router, HTTPMethods } from "https://deno.land/x/oak/mod.ts";
 
 function requestAction(action: Function, controller: Controller) {
-  return function (ctx: RouterContext): void {
-    controller.ctx = ctx;    
+  return  async function (ctx: RouterContext): Promise<void> {
+    controller.ctx = ctx;
+    let body;
+    
+    if (ctx.request.hasBody) {
+      body = await ctx.request.body().value;
+    }
 
-    action.call(controller, helpers.getQuery(ctx, { mergeParams: true }));
+    action.call(controller, { ...helpers.getQuery(ctx, { mergeParams: true }), body });
   }
 }
 
@@ -36,12 +41,16 @@ export class Controller {
     this.status(Status.OK, data);
   }
 
-  protected badRequest() {
-    this.status(Status.BadRequest, { errorCode: "BadRequest" });
+  protected badRequest(errorCode?: string, message?: string) {
+    this.status(Status.BadRequest, { errorCode: errorCode ?? "BadRequest", message });
   }
 
   protected noContent() {
     this.status(Status.NoContent, {});
+  }
+
+  protected created(data?: any) {
+    this.status(Status.Created, data);
   }
 
   protected mapGet(path: string, action: Function) {

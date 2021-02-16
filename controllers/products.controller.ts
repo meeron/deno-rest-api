@@ -29,6 +29,7 @@ class ProductsController extends Controller {
     this.mapGet("/products", this.getAll);
     this.mapGet("/products/:id", this.getById);
     this.mapDelete("/products/:id", this.delete);
+    this.mapPost("/products", this.create);
   }
 
   getAll() {
@@ -51,7 +52,22 @@ class ProductsController extends Controller {
     this.ok();
   }
 
-  create() {
+  create({ body }: Record<string, any>) {
+    const newProduct = <Product>body;
+
+    if (!newProduct.name) {
+      return this.badRequest("InvalidInput", "'name' is required");
+    }
+
+    if (isNaN(+newProduct.price)) {
+      return this.badRequest("InvalidInput", "'price' is invalid");
+    }
+
+    newProduct.id = data.length + 1;
+
+    data.push(newProduct);
+
+    this.created(newProduct);
   }
 }
 
