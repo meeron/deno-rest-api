@@ -16,28 +16,50 @@ export class Controller {
     this.routes = new Map<{method: string, path: string}, Function>();
   }
 
-  protected ok(data: any) {
-    if (this.ctx) {
-      this.ctx.response.body = data;
-    }
+  mapRoutes(router: Router) {
+    this.routes.forEach((action, { method, path }) => {
+      if (method === "get") {
+        router.get(path, requestAction(action, this));
+      }
+
+      if (method === "delete") {
+        router.delete(path, requestAction(action, this));
+      }
+
+      if (method === "post") {
+        router.post(path, requestAction(action, this));
+      }
+    });
+  }
+
+  protected ok(data?: any) {
+    this.status(Status.OK, data);
   }
 
   protected badRequest() {
-    if (!this.ctx) return;
+    this.status(Status.BadRequest, { errorCode: "BadRequest" });
+  }
 
-    this.ctx.response.body = { errorCode: "BadRequest" };
-    this.ctx.response.status = Status.BadRequest;
+  protected noContent() {
+    this.status(Status.NoContent, {});
   }
 
   protected mapGet(path: string, action: Function) {
     this.routes.set({ method: "get", path }, action);
   }
 
-  mapRoutes(router: Router) {
-    this.routes.forEach((action, { method, path }) => {
-      if (method === "get") {
-        router.get(path, requestAction(action, this));
-      }
-    });
+  protected mapDelete(path: string, action: Function) {
+    this.routes.set({ method: "delete", path }, action);
   }
+
+  protected mapPost(path: string, action: Function) {
+    this.routes.set({ method: "post", path }, action);
+  }
+
+  protected status(status: Status, body: any) {
+    if (!this.ctx) return;
+
+    this.ctx.response.body = body;
+    this.ctx.response.status = status;    
+  } 
 }
