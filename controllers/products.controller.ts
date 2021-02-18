@@ -1,29 +1,10 @@
-import { Product } from "../contracts/products.ts";
+import productsService, { IProductsService } from "../services/products.service.ts";
 import { Controller } from "./controller.ts";
 
-const data: Product[] = [
-  {
-    id: 1,
-    name: "Orange",
-    description: "Some nice orange",
-    price: 4.99,
-  },
-  {
-    id: 2,
-    name: "Witcher 3",
-    description: "XBox One game",
-    price: 24.99,
-  },
-  {
-    id: 3,
-    name: "XBox Series X",
-    description: "Gaming console from Microsoft",
-    price: 599.99,
-  }
-];
-
 class ProductsController extends Controller {
-  constructor() {
+  constructor(
+    private readonly productsService: IProductsService
+  ) {
     super();
 
     this.mapGet("/products", this.getAll);
@@ -32,45 +13,33 @@ class ProductsController extends Controller {
     this.mapPost("/products", this.create);
   }
 
-  getAll() {
-    this.ok(data);
+  async getAll() {
+    this.ok(await this.productsService.getAll());
   }
 
-  getById({ id }: Record<string, string>) {
-    const product = data.find(p => p.id === +id);
+  async getById({ id }: Record<string, any>) {
+    const product = await this.productsService.getById(+id);
     if (!product) return this.noContent();
 
     this.ok(product);
   }
 
-  delete({ id }: Record<string, string>) {
-    const index = data.findIndex(p => p.id === +id);
-    if (index === -1) return this.noContent();
-
-    data.splice(index, 1);
+  async delete({ id }: Record<string, any>) {
+    if (!await this.productsService.delete(+id)) {
+      return this.noContent();
+    }
 
     this.ok();
   }
 
-  create({ body }: Record<string, any>) {
-    const newProduct = <Product>body;
+  async create({ body }: Record<string, any>) {
+    const result = await await this.productsService.addProduct(body);
+    if (result.errorMessage) return this.badRequest("InvalidInput", result.errorMessage);
 
-    if (!newProduct.name) {
-      return this.badRequest("InvalidInput", "'name' is required");
-    }
-
-    if (isNaN(+newProduct.price)) {
-      return this.badRequest("InvalidInput", "'price' is invalid");
-    }
-
-    newProduct.id = data.length + 1;
-
-    data.push(newProduct);
-
-    this.created(newProduct);
+    this.created(result.newProduct);
   }
 }
 
-const products = new ProductsController();
+const products = new ProductsController(productsService);
 
 export default products;
