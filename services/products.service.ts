@@ -1,25 +1,5 @@
 import { NewProductRequest, NewProductResult, ProductViewModel } from "../models/products.models.ts";
-
-const products: ProductViewModel[] = [
-  {
-    id: 1,
-    name: "Orange",
-    description: "Some nice orange",
-    price: 4.99,
-  },
-  {
-    id: 2,
-    name: "Witcher 3",
-    description: "XBox One game",
-    price: 24.99,
-  },
-  {
-    id: 3,
-    name: "XBox Series X",
-    description: "Gaming console from Microsoft",
-    price: 599.99,
-  }
-];
+import repository, { IProductsRepository, Product } from "../repositories/products.repository.ts";
 
 export interface IProductsService {
   getAll(): Promise<ProductViewModel[]>,
@@ -30,50 +10,59 @@ export interface IProductsService {
 
 class ProductsService implements IProductsService {
   
-  addProduct(request: NewProductRequest): Promise<NewProductResult> {
+  constructor(private readonly repository: IProductsRepository) {
+
+  }
+
+  async addProduct(request: NewProductRequest): Promise<NewProductResult> {
 
     if (!request.name) {
-      return new Promise(resolve => resolve({ errorMessage: "'name' is required" }));
+      return { errorMessage: "'name' is required" };
     }
 
     if (isNaN(+request.price)) {
-      return new Promise(resolve => resolve({ errorMessage: "'price' is invalid" }));
+      return { errorMessage: "'price' is invalid" };
     }
 
-    const newProduct: ProductViewModel = {
-      id: products.length + 1,
+    const newProduct: Product = {
+      _id: 0,
       name: request.name,
       description: request.description,
       price: request.price,
     };
 
-    products.push(newProduct);
-
-    return new Promise(resolve => resolve({ newProduct }));
+    return {
+      newProduct: this.map(await this.repository.insert(newProduct)),
+    };
   }
 
-  delete(id: number): Promise<boolean> {
-    const index = products.findIndex(p => p.id == id);
-    const result = index > -1;
-
-    if (result) {
-      products.splice(index, 1);
-    }
-    
-    return new Promise(resolve => resolve(result));
+  async delete(id: number): Promise<boolean> {
+    return await this.repository.delete(id) > 0;
   }
   
-  getById(id: number): Promise<ProductViewModel | undefined> {
-    const product = products.find(p => p.id == id);
+  async getById(id: number): Promise<ProductViewModel | undefined> {
+    const product = await this.repository.findOne(p => p._id == id);
+    if (!product) return;
 
-    return new Promise((resolve) => resolve(product));
+    return this.map(product);
   }
   
-  getAll(): Promise<ProductViewModel[]> {
-    return new Promise((resolve) => resolve(products));
+  async getAll(): Promise<ProductViewModel[]> {
+    const products = await this.repository.find();
+
+    return products.map(this.map);
+  }
+
+  private map(product: Product): ProductViewModel {
+    return {
+      id: product._id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+    };
   }
 }
 
-const service: IProductsService = new ProductsService();
+const service: IProductsService = new ProductsService(repository);
 
 export default service;
