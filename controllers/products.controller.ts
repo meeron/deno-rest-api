@@ -33,7 +33,7 @@ class ProductsController extends Controller {
   }
 
   async create({ body }: Record<string, any>) {
-    const result = await await this.productsService.addProduct(body);
+    const result = await this.productsService.addProduct(body);
     if (result.errorMessage) return this.badRequest("InvalidInput", result.errorMessage);
 
     this.created(result.newProduct);

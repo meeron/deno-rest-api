@@ -49,6 +49,10 @@ export class Controller {
     this.status(Status.BadRequest, { errorCode: errorCode ?? "BadRequest", message });
   }
 
+  protected badRequestObject(data: any) {
+    this.status(Status.BadRequest, data);
+  }
+
   protected noContent() {
     this.status(Status.NoContent, {});
   }
