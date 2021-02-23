@@ -9,12 +9,12 @@ class AuthController extends Controller {
     this.mapPost("/auth/token", this.createToken);
   }
 
-  async createToken(request: Record<string, any>) {
-    const result = await this.authService.createToken(<CreateTokenRequest>request);
+  async createToken({ body }: Record<string, any>) {
+    const result = await this.authService.createToken(<CreateTokenRequest>body);
     
     if (result.error) return this.badRequestObject(result.error);
     
-    this.ok();
+    this.ok(result.token);
   }
 }
 

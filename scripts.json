@@ -4,8 +4,12 @@
     "start": {
       "cmd": "deno run app.ts",
       "allow": [
-        "net"
-      ]
+        "net",
+        "env"
+      ],
+      "env": {
+        "JWT_SECRET": "RXEBgsSNUjRw8gzZsALARveQXdKGdfELMfRWvpJ7WTjwcTYwKhQpX8khqXqxeXeQ"
+      }
     }
   }
 }
