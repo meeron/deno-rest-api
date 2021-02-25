@@ -1,35 +1,10 @@
-import { RouterContext, helpers, Status, Router } from "https://deno.land/x/oak/mod.ts";
-import { AsyncControllerAction, RouteConfig } from "../infrastracture/mod.ts";
-import authService from "../services/auth.service.ts";
-
-function requestAction(route: RouteConfig, controller: Controller) {
-  return  async function (ctx: RouterContext): Promise<void> {
-    controller.ctx = ctx;
-    let body;
-
-    if (route.isAuth() || controller.useAuth) {
-      const authResult = await authService.verifyAuthorization(ctx.request.headers.get("authorization") ?? "");
-      if (!authResult.isSuccess) {
-        ctx.response.status = Status.Forbidden;
-        ctx.response.body = authResult;
-        return;
-      }
-    }
-
-    
-    if (ctx.request.hasBody) {
-      body = await ctx.request.body().value;
-    }
-
-    const asyncAction = <AsyncControllerAction>route.getAction();
-    await asyncAction.call(controller, { ...helpers.getQuery(ctx, { mergeParams: true }), body });
-  }
-}
+import { RouterContext, Status, Router } from "https://deno.land/x/oak/mod.ts";
+import { RouteConfig } from "../infrastracture/mod.ts";
 
 export class Controller {
   private readonly routes: RouteConfig[];
   private _useAuth: boolean;
-  ctx: RouterContext | undefined;
+  ctx?: RouterContext;
 
   constructor() {
     this.routes = [];
@@ -39,15 +14,15 @@ export class Controller {
   mapRoutes(router: Router) {
     this.routes.forEach(route => {
       if (route.isMethod("get")) {
-        router.get(route.path, requestAction(route, this));
+        router.get(route.path, ...route.getMiddlewares());
       }
 
       if (route.isMethod("delete")) {
-        router.delete(route.path, requestAction(route, this));
+        router.delete(route.path, ...route.getMiddlewares());
       }
 
       if (route.isMethod("post")) {
-        router.post(route.path, requestAction(route, this));
+        router.post(route.path, ...route.getMiddlewares());
       }
     });
   }
@@ -61,7 +36,7 @@ export class Controller {
   }
 
   protected route(path: string) {
-    const route = new RouteConfig(path);
+    const route = new RouteConfig(this, path);
 
     this.routes.push(route);
 

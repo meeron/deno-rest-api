@@ -1,15 +1,20 @@
+import { helpers, RouterContext } from "https://deno.land/x/oak/mod.ts";
+import { Controller } from "../controllers/controller.ts";
 import { AsyncControllerAction } from "./mod.ts";
 import { ControllerAction } from "./mod.ts";
 import { HttpMethod } from "./mod.ts";
 
+type ActionMiddleware = (ctx: RouterContext, next: Function) => Promise<void>;
+
 export class RouteConfig {
   private method: HttpMethod;
-  private action?: ControllerAction | AsyncControllerAction;
-  private useAuth: boolean;
+  private actionMiddlewares: ActionMiddleware[];
 
-  constructor(public readonly path: string) {
+  constructor(
+    private readonly controller: Controller,
+    public readonly path: string) {
     this.method = "get";
-    this.useAuth = false;
+    this.actionMiddlewares = [];
   }
 
   post() {
@@ -23,12 +28,34 @@ export class RouteConfig {
   }
 
   use(action: ControllerAction | AsyncControllerAction) {
-    this.action = action;
+    this.actionMiddlewares.push(async (ctx: RouterContext, next: Function) => {
+      this.controller.ctx = ctx;
+
+      let body;
+      if (ctx.request.hasBody) {
+        body = await ctx.request.body().value;
+      }
+  
+      const asyncAction = <AsyncControllerAction>action;
+      await asyncAction.call(this.controller, { ...helpers.getQuery(ctx, { mergeParams: true }), body });
+  
+      await next();
+    });
     return this;
   }
 
-  withAuth() {
-    this.useAuth = true;
+  useAuth() {
+    // TODO: Add AuthMidleware
+    /*
+        if (route.isAuth() || controller.useAuth) {
+      const authResult = await authService.verifyAuthorization(ctx.request.headers.get("authorization") ?? "");
+      if (!authResult.isSuccess) {
+        ctx.response.status = Status.Forbidden;
+        ctx.response.body = authResult;
+        return;
+      }
+    }
+    */
     return this;
   }
 
@@ -36,11 +63,7 @@ export class RouteConfig {
     return this.method == method;
   }
 
-  getAction() {
-    return this.action;
-  }
-
-  isAuth() {
-    return this.useAuth;
+  getMiddlewares() {
+    return this.actionMiddlewares;
   }
 }
