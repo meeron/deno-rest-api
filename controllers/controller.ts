@@ -1,12 +1,29 @@
 import { RouterContext, helpers, Status, Router } from "https://deno.land/x/oak/mod.ts";
+import authService from "../services/auth.service.ts";
 
 type AsyncControllerAction = (params: Record<string, any>) => Promise<void>;
 type ControllerAction = (params: Record<string, any>) => void;
+type HttpMethod = "get" | "post" | "delete";
+interface MapOptions {
+  method: HttpMethod,
+  path: string,
+  useAuth: boolean,
+}
 
-function requestAction(action: ControllerAction | AsyncControllerAction, controller: Controller) {
+function requestAction(action: ControllerAction | AsyncControllerAction, controller: Controller, useAuth: boolean) {
   return  async function (ctx: RouterContext): Promise<void> {
     controller.ctx = ctx;
     let body;
+
+    if (useAuth || controller.useAuth) {
+      const authResult = await authService.verifyAuthorization(ctx.request.headers.get("authorization") ?? "");
+      if (!authResult.isSuccess) {
+        ctx.response.status = Status.Forbidden;
+        ctx.response.body = authResult;
+        return;
+      }
+    }
+
     
     if (ctx.request.hasBody) {
       body = await ctx.request.body().value;
@@ -18,27 +35,37 @@ function requestAction(action: ControllerAction | AsyncControllerAction, control
 }
 
 export class Controller {
-  private readonly routes: Map<{method: string, path: string}, ControllerAction | AsyncControllerAction>;
+  private readonly routes: Map<MapOptions, ControllerAction | AsyncControllerAction>;
+  private _useAuth: boolean;
   ctx: RouterContext | undefined;
 
   constructor() {
-    this.routes = new Map<{method: string, path: string}, ControllerAction | AsyncControllerAction>();
+    this.routes = new Map<MapOptions, ControllerAction | AsyncControllerAction>();
+    this._useAuth = false;
   }
 
   mapRoutes(router: Router) {
-    this.routes.forEach((action, { method, path }) => {
+    this.routes.forEach((action, { method, path, useAuth }) => {
       if (method === "get") {
-        router.get(path, requestAction(action, this));
+        router.get(path, requestAction(action, this, useAuth));
       }
 
       if (method === "delete") {
-        router.delete(path, requestAction(action, this));
+        router.delete(path, requestAction(action, this, useAuth));
       }
 
       if (method === "post") {
-        router.post(path, requestAction(action, this));
+        router.post(path, requestAction(action, this, useAuth));
       }
     });
+  }
+
+  get useAuth() {
+    return this._useAuth;
+  }
+
+  protected setAuth() {
+    this._useAuth = true;
   }
 
   protected ok(data?: any) {
@@ -61,16 +88,16 @@ export class Controller {
     this.status(Status.Created, data);
   }
 
-  protected mapGet(path: string, action: ControllerAction | AsyncControllerAction) {
-    this.routes.set({ method: "get", path }, action);
+  protected mapGet(path: string, action: ControllerAction | AsyncControllerAction, useAuth: boolean = false) {
+    this.routes.set({ method: "get", path, useAuth }, action);
   }
 
-  protected mapDelete(path: string, action: ControllerAction | AsyncControllerAction) {
-    this.routes.set({ method: "delete", path }, action);
+  protected mapDelete(path: string, action: ControllerAction | AsyncControllerAction, useAuth: boolean = false) {
+    this.routes.set({ method: "delete", path, useAuth }, action);
   }
 
-  protected mapPost(path: string, action: ControllerAction | AsyncControllerAction) {
-    this.routes.set({ method: "post", path }, action);
+  protected mapPost(path: string, action: ControllerAction | AsyncControllerAction, useAuth: boolean = false) {
+    this.routes.set({ method: "post", path, useAuth }, action);
   }
 
   protected status(status: Status, body: any) {

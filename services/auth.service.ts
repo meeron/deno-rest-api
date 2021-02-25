@@ -2,9 +2,12 @@ import {
   CreateTokenRequest,
   CreateTokenResult,
   OAuth2ErrorType,
+  OAuth2TokenType,
   Token,
  } from "../models/auth.models.ts";
- import { create } from "https://deno.land/x/djwt@v2.2/mod.ts";
+import { create, Payload, verify } from "https://deno.land/x/djwt@v2.2/mod.ts";
+import { Result } from "../models/common.models.ts";
+import { Algorithm } from "https://deno.land/x/djwt@v2.2/algorithm.ts";
 
  const clients = [
   { id: "W0itmV1LG5inBb0g", secret: "a9QG9PNGKdX9LqJ3z52fVlWS" },
@@ -13,9 +16,35 @@ import {
 
 export interface IAuthService {
   createToken(request: CreateTokenRequest): Promise<CreateTokenResult>,
+  verifyAuthorization(headerValue: string): Promise<Result<Payload>>,
 }
 
 class AuthService implements IAuthService {
+  private readonly secret: string;
+  private readonly alg: Algorithm;
+
+  constructor() {
+    this.secret = Deno.env.get("JWT_SECRET")!;
+    this.alg = "HS512";
+  }
+
+  async verifyAuthorization(headerValue: string): Promise<Result<Payload>> {
+    const headerValueSplit = headerValue.split(' ');
+    const authScheme = headerValueSplit[0] as OAuth2TokenType;
+    const authValue = headerValueSplit[1];
+    
+    if (authScheme != "Bearer") return Result.forbidden("Invalid authentication scheme");
+
+    try {
+      const payload = await verify(authValue, this.secret, this.alg);
+
+      if (Date.now() > payload.exp!) return Result.forbidden("Token has expired");
+      
+      return Result.success(payload);
+    } catch {
+      return Result.forbidden();
+    }
+  }
   
   async createToken(request: CreateTokenRequest): Promise<CreateTokenResult> {
     const error = this.validateRequest(request);
@@ -30,9 +59,9 @@ class AuthService implements IAuthService {
 
     const expiresIn = 3600;
     const jwt = await create(
-      { alg: "HS512", typ: "JWT" },
-      { sub: client.id, exp: Date.now() + expiresIn },
-      Deno.env.get("JWT_SECRET")!
+      { alg: this.alg, typ: "JWT" },
+      { sub: client.id, exp: Date.now() + (expiresIn * 1000) },
+      this.secret
     );
 
     const token: Token = {

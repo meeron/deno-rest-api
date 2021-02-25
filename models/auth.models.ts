@@ -1,3 +1,5 @@
+import { Payload } from "https://deno.land/x/djwt@v2.2/mod.ts";
+
 export type OAuth2GrantType = "client_credentials";
 export type OAuth2TokenType = "Bearer";
 export type OAuth2ErrorType = "invalid_request" | "invalid_client" | "invalid_grant" | "unauthorized_client" | "unsupported_grant_type";

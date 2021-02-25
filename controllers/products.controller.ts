@@ -7,6 +7,7 @@ class ProductsController extends Controller {
   ) {
     super();
 
+    this.setAuth();
     this.mapGet("/products", this.getAll);
     this.mapGet("/products/:id", this.getById);
     this.mapDelete("/products/:id", this.delete);
