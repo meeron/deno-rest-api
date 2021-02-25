@@ -5,7 +5,7 @@ class HomeController extends Controller {
   constructor() {
     super();
 
-    this.mapGet("/", this.index);
+    this.route("/").use(this.index);
   }
 
   index() {

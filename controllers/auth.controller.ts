@@ -6,7 +6,7 @@ class AuthController extends Controller {
   constructor(private readonly authService: IAuthService) {
     super();
 
-    this.mapPost("/auth/token", this.createToken);
+    this.route("/auth/token").use(this.createToken).post();
   }
 
   async createToken({ body }: Record<string, any>) {

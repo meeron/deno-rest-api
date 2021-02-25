@@ -7,11 +7,11 @@ class ProductsController extends Controller {
   ) {
     super();
 
-    this.setAuth();
-    this.mapGet("/products", this.getAll);
-    this.mapGet("/products/:id", this.getById);
-    this.mapDelete("/products/:id", this.delete);
-    this.mapPost("/products", this.create);
+    this.withAuth();
+    this.route("/products").use(this.getAll);
+    this.route("/products/:id").use(this.getById);
+    this.route("/products/:id").use(this.delete).delete();
+    this.route("/products").use(this.create).post();
   }
 
   async getAll() {
