@@ -1,38 +1,40 @@
 import { RouterContext, Status, Router } from "https://deno.land/x/oak/mod.ts";
-import { RouteConfig } from "../infrastracture/mod.ts";
+import { RouteConfig, ActionMiddleware } from "../infrastracture/mod.ts";
+import authMiddleware from "../middlewares/auth.middleware.ts";
 
 export class Controller {
   private readonly routes: RouteConfig[];
-  private _useAuth: boolean;
+  private readonly middlewares: ActionMiddleware[];
   ctx?: RouterContext;
 
   constructor() {
     this.routes = [];
-    this._useAuth = false;
+    this.middlewares = [];
   }
 
   mapRoutes(router: Router) {
     this.routes.forEach(route => {
+      const middlewares = [
+        ...this.middlewares,
+        ...route.getMiddlewares(),
+      ];
+
       if (route.isMethod("get")) {
-        router.get(route.path, ...route.getMiddlewares());
+        router.get(route.path, ...middlewares);
       }
 
       if (route.isMethod("delete")) {
-        router.delete(route.path, ...route.getMiddlewares());
+        router.delete(route.path, ...middlewares);
       }
 
       if (route.isMethod("post")) {
-        router.post(route.path, ...route.getMiddlewares());
+        router.post(route.path, ...middlewares);
       }
     });
   }
 
-  get useAuth() {
-    return this._useAuth;
-  }
-
-  protected withAuth() {
-    this._useAuth = true;
+  protected useAuth() {
+    this.middlewares.push(authMiddleware);
   }
 
   protected route(path: string) {

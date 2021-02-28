@@ -7,7 +7,7 @@ class ProductsController extends Controller {
   ) {
     super();
 
-    this.withAuth();
+    this.useAuth();
     this.route("/products").use(this.getAll);
     this.route("/products/:id").use(this.getById);
     this.route("/products/:id").use(this.delete).delete();

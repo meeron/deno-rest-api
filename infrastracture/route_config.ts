@@ -3,8 +3,9 @@ import { Controller } from "../controllers/controller.ts";
 import { AsyncControllerAction } from "./mod.ts";
 import { ControllerAction } from "./mod.ts";
 import { HttpMethod } from "./mod.ts";
+import authMiddleware from "../middlewares/auth.middleware.ts";
 
-type ActionMiddleware = (ctx: RouterContext, next: Function) => Promise<void>;
+export type ActionMiddleware = (ctx: RouterContext, next: Function) => Promise<void>;
 
 export class RouteConfig {
   private method: HttpMethod;
@@ -45,17 +46,7 @@ export class RouteConfig {
   }
 
   useAuth() {
-    // TODO: Add AuthMidleware
-    /*
-        if (route.isAuth() || controller.useAuth) {
-      const authResult = await authService.verifyAuthorization(ctx.request.headers.get("authorization") ?? "");
-      if (!authResult.isSuccess) {
-        ctx.response.status = Status.Forbidden;
-        ctx.response.body = authResult;
-        return;
-      }
-    }
-    */
+    this.actionMiddlewares.push(authMiddleware);
     return this;
   }
 
